@@ -16,7 +16,7 @@ func NewChapterRepository(db *sql.DB) repository.ChapterRepository {
 
 func (r *chapterRepository) FindByStoryID(ctx context.Context, storyID string) ([]domain.Chapter, error) {
 	query := `
-		SELECT chapter_id, story_id, title, content, order_index, created_at, updated_at
+		SELECT id, story_id, title, content, order_index, created_at, updated_at
 		FROM chapters
 		WHERE story_id = $1
 		ORDER BY order_index ASC
@@ -31,7 +31,7 @@ func (r *chapterRepository) FindByStoryID(ctx context.Context, storyID string) (
 	for rows.Next() {
 		var c domain.Chapter
 		if err := rows.Scan(
-			&c.ChapterID, &c.StoryID, &c.Title,
+			&c.ID, &c.StoryID, &c.Title,
 			&c.Content, &c.OrderIndex, &c.CreatedAt, &c.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -43,13 +43,13 @@ func (r *chapterRepository) FindByStoryID(ctx context.Context, storyID string) (
 
 func (r *chapterRepository) FindByID(ctx context.Context, id string) (*domain.Chapter, error) {
 	query := `
-		SELECT chapter_id, story_id, title, content, order_index, created_at, updated_at
+		SELECT id, story_id, title, content, order_index, created_at, updated_at
 		FROM chapters
-		WHERE chapter_id = $1
+		WHERE id = $1
 	`
 	var c domain.Chapter
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&c.ChapterID, &c.StoryID, &c.Title,
+		&c.ID, &c.StoryID, &c.Title,
 		&c.Content, &c.OrderIndex, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -63,12 +63,12 @@ func (r *chapterRepository) FindByID(ctx context.Context, id string) (*domain.Ch
 
 func (r *chapterRepository) Create(ctx context.Context, c *domain.Chapter) error {
 	query := `
-		INSERT INTO chapters (chapter_id, story_id, title, content, order_index, created_at, updated_at)
+		INSERT INTO chapters (id, story_id, title, content, order_index, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 	now := time.Now()
 	_, err := r.db.ExecContext(ctx, query,
-		c.ChapterID, c.StoryID, c.Title, c.Content, c.OrderIndex, now, now,
+		c.ID, c.StoryID, c.Title, c.Content, c.OrderIndex, now, now,
 	)
 	return err
 }
@@ -77,16 +77,16 @@ func (r *chapterRepository) Update(ctx context.Context, c *domain.Chapter) error
 	query := `
 		UPDATE chapters
 		SET title = $1, content = $2, updated_at = $3
-		WHERE chapter_id = $4
+		WHERE id = $4
 	`
 	_, err := r.db.ExecContext(ctx, query,
-		c.Title, c.Content, time.Now(), c.ChapterID,
+		c.Title, c.Content, time.Now(), c.ID,
 	)
 	return err
 }
 
 func (r *chapterRepository) Delete(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM chapters WHERE chapter_id = $1`, id)
+	_, err := r.db.ExecContext(ctx, `DELETE FROM chapters WHERE id = $1`, id)
 	return err
 }
 

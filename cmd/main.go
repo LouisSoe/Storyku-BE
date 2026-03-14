@@ -5,38 +5,47 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"storyku-be/config"
-	"storyku-be/core/usecase"
-	dbImpl "storyku-be/interfaces/database"
-	httpHandler "storyku-be/interfaces/http"
-	"storyku-be/routes"
 	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"storyku-be/config"
+	dbImpl "storyku-be/interfaces/database"
+	httpHandler "storyku-be/interfaces/http"
+	"storyku-be/core/usecase"
+	"storyku-be/routes"
 )
 
 func main() {
 	cfg := config.Load()
 
-	storyRepo := dbImpl.NewStoryRepository(cfg.DB)
-	chapterRepo := dbImpl.NewChapterRepository(cfg.DB)
+	// Repositories
+	storyRepo    := dbImpl.NewStoryRepository(cfg.DB)
+	chapterRepo  := dbImpl.NewChapterRepository(cfg.DB)
+	categoryRepo := dbImpl.NewCategoryRepository(cfg.DB)
+	tagRepo      := dbImpl.NewTagRepository(cfg.DB)
 
-	storyUC := usecase.NewStoryUsecase(storyRepo)
-	chapterUC := usecase.NewChapterUsecase(storyRepo, chapterRepo)
+	// Use Cases
+	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo)
+	tagUsecase      := usecase.NewTagUsecase(tagRepo)
+	storyUsecase    := usecase.NewStoryUsecase(storyRepo, categoryRepo, tagRepo)
+	chapterUsecase  := usecase.NewChapterUsecase(storyRepo, chapterRepo)
 
-	storyHandler := httpHandler.NewStoryHandler(storyUC, cfg.Logger)
-	chapterHandler := httpHandler.NewChapterHandler(chapterUC, cfg.Logger)
+	// Handlers
+	storyHandler    := httpHandler.NewStoryHandler(storyUsecase, chapterUsecase, cfg.Logger)
+	chapterHandler  := httpHandler.NewChapterHandler(chapterUsecase, cfg.Logger)
+	categoryHandler := httpHandler.NewCategoryHandler(categoryUsecase, cfg.Logger)
+	tagHandler      := httpHandler.NewTagHandler(tagUsecase, cfg.Logger)
 
 	e := echo.New()
 	e.HideBanner = true
 
-	routes.Register(e, storyHandler, chapterHandler)
+	routes.Register(e, storyHandler, chapterHandler, categoryHandler, tagHandler)
 
 	go func() {
-		cfg.Logger.WithField("port", cfg.AppPort).Info("server starting")
+		cfg.Logger.Infof("server starting on port %s", cfg.AppPort)
 		if err := e.Start(":" + cfg.AppPort); err != nil && err != http.ErrServerClosed {
-			cfg.Logger.WithError(err).Fatal("server error")
+			cfg.Logger.Fatalf("server error: %v", err)
 		}
 	}()
 
@@ -49,8 +58,7 @@ func main() {
 	defer cancel()
 
 	if err := e.Shutdown(ctx); err != nil {
-		cfg.Logger.WithError(err).Fatal("server forced shutdown")
+		cfg.Logger.Fatalf("server forced shutdown: %v", err)
 	}
-
 	cfg.Logger.Info("server stopped")
 }

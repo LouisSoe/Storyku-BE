@@ -26,7 +26,7 @@ type chapterRequest struct {
 
 // Add godoc
 // POST /api/v1/stories/:id/chapters
-func (h *ChapterHandler) Add(c echo.Context) error {
+func (h *ChapterHandler) Create(c echo.Context) error {
 	var req chapterRequest
 	if err := c.Bind(&req); err != nil {
 		return utils.BadRequest(c, "invalid request body")

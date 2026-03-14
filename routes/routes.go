@@ -2,13 +2,20 @@ package routes
 
 import (
 	"net/http"
-	httpHandler "storyku-be/interfaces/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	httpHandler "storyku-be/interfaces/http"
 )
 
-func Register(e *echo.Echo, story *httpHandler.StoryHandler, chapter *httpHandler.ChapterHandler) {
+func Register(
+	e *echo.Echo,
+	storyHandler *httpHandler.StoryHandler,
+	chapterHandler *httpHandler.ChapterHandler,
+	categoryHandler *httpHandler.CategoryHandler,
+	tagHandler *httpHandler.TagHandler,
+) {
+	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
@@ -20,15 +27,33 @@ func Register(e *echo.Echo, story *httpHandler.StoryHandler, chapter *httpHandle
 
 	api := e.Group("/api/v1")
 
-	s := api.Group("/stories")
-	s.GET("", story.List)
-	s.POST("", story.Create)
-	s.GET("/:id", story.GetByID)
-	s.PUT("/:id", story.Update)
-	s.DELETE("/:id", story.Delete)
+	// Master: Categories
+	categories := api.Group("/categories")
+	categories.GET("", categoryHandler.List)
+	categories.POST("", categoryHandler.Create)
+	categories.GET("/:id", categoryHandler.GetByID)
+	categories.PUT("/:id", categoryHandler.Update)
+	categories.DELETE("/:id", categoryHandler.Delete)
 
-	ch := s.Group("/:id/chapters")
-	ch.POST("", chapter.Add)
-	ch.PUT("/:cid", chapter.Update)
-	ch.DELETE("/:cid", chapter.Delete)
+	// Master: Tags
+	tags := api.Group("/tags")
+	tags.GET("", tagHandler.List)
+	tags.POST("", tagHandler.Create)
+	tags.GET("/:id", tagHandler.GetByID)
+	tags.PUT("/:id", tagHandler.Update)
+	tags.DELETE("/:id", tagHandler.Delete)
+
+	// Stories
+	stories := api.Group("/stories")
+	stories.GET("", storyHandler.List)
+	stories.POST("", storyHandler.Create)
+	stories.GET("/:id", storyHandler.GetByID)
+	stories.PUT("/:id", storyHandler.Update)
+	stories.DELETE("/:id", storyHandler.Delete)
+
+	// Chapters
+	chapters := stories.Group("/:id/chapters")
+	chapters.POST("", chapterHandler.Create)
+	chapters.PUT("/:cid", chapterHandler.Update)
+	chapters.DELETE("/:cid", chapterHandler.Delete)
 }

@@ -13,6 +13,7 @@ type ChapterUsecase interface {
 	AddChapter(ctx context.Context, storyID string, chapter *domain.Chapter) error
 	UpdateChapter(ctx context.Context, storyID, chapterID string, chapter *domain.Chapter) error
 	DeleteChapter(ctx context.Context, storyID, chapterID string) error
+	GetByStoryID(ctx context.Context, storyID uuid.UUID) ([]domain.Chapter, error)
 }
 
 type chapterUsecase struct {
@@ -31,7 +32,11 @@ func NewChapterUsecase(
 }
 
 func (u *chapterUsecase) AddChapter(ctx context.Context, storyID string, chapter *domain.Chapter) error {
-	story, err := u.storyRepo.FindByID(ctx, storyID)
+	storyUUID, err := uuid.Parse(storyID)
+	if err != nil {
+		return errors.New("invalid story id")
+	}
+	story, err := u.storyRepo.FindByID(ctx, storyUUID)
 	if err != nil || story == nil {
 		return errors.New("story not found")
 	}
@@ -44,14 +49,18 @@ func (u *chapterUsecase) AddChapter(ctx context.Context, storyID string, chapter
 		return err
 	}
 
-	chapter.ChapterID = uuid.New().String()
+	chapter.ID = uuid.New().String()
 	chapter.StoryID = storyID
 	chapter.OrderIndex = count
 	return u.chapterRepo.Create(ctx, chapter)
 }
 
 func (u *chapterUsecase) UpdateChapter(ctx context.Context, storyID, chapterID string, chapter *domain.Chapter) error {
-	story, err := u.storyRepo.FindByID(ctx, storyID)
+	storyUUID, err := uuid.Parse(storyID)
+	if err != nil {
+		return errors.New("invalid story id")
+	}
+	story, err := u.storyRepo.FindByID(ctx, storyUUID)
 	if err != nil || story == nil {
 		return errors.New("story not found")
 	}
@@ -67,14 +76,18 @@ func (u *chapterUsecase) UpdateChapter(ctx context.Context, storyID, chapterID s
 		return errors.New("chapter title is required")
 	}
 
-	chapter.ChapterID = chapterID
+	chapter.ID = chapterID
 	chapter.StoryID = storyID
 	chapter.OrderIndex = existing.OrderIndex
 	return u.chapterRepo.Update(ctx, chapter)
 }
 
 func (u *chapterUsecase) DeleteChapter(ctx context.Context, storyID, chapterID string) error {
-	story, err := u.storyRepo.FindByID(ctx, storyID)
+	storyUUID, err := uuid.Parse(storyID)
+	if err != nil {
+		return errors.New("invalid story id")
+	}
+	story, err := u.storyRepo.FindByID(ctx, storyUUID)
 	if err != nil || story == nil {
 		return errors.New("story not found")
 	}
@@ -88,4 +101,8 @@ func (u *chapterUsecase) DeleteChapter(ctx context.Context, storyID, chapterID s
 	}
 
 	return u.chapterRepo.Delete(ctx, chapterID)
+}
+
+func (u *chapterUsecase) GetByStoryID(ctx context.Context, storyID uuid.UUID) ([]domain.Chapter, error) {
+	return u.chapterRepo.FindByStoryID(ctx, storyID.String())
 }

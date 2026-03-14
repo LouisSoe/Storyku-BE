@@ -3,7 +3,7 @@ package domain
 import "time"
 
 type Chapter struct {
-	ChapterID  string    `json:"chapter_id"  db:"chapter_id"`
+	ID         string    `json:"id"          db:"id"`
 	StoryID    string    `json:"story_id"    db:"story_id"`
 	Title      string    `json:"title"       db:"title"`
 	Content    string    `json:"content"     db:"content"`

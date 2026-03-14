@@ -1,15 +1,12 @@
 package domain
 
-import "time"
+import (
+	"time"
 
-type StoryCategory string
-type StoryStatus string
-
-const (
-	CategoryFinancial  StoryCategory = "Financial"
-	CategoryTechnology StoryCategory = "Technology"
-	CategoryHealth     StoryCategory = "Health"
+	"github.com/google/uuid"
 )
+
+type StoryStatus string
 
 const (
 	StatusPublish StoryStatus = "publish"
@@ -17,25 +14,23 @@ const (
 )
 
 type Story struct {
-	StoryID   string    `json:"story_id"   db:"story_id"`
-	Title     string    `json:"title"      db:"title"`
-	Author    string    `json:"author"     db:"author"`
-	Synopsis  string    `json:"synopsis"   db:"synopsis"`
-	Category  string    `json:"category"   db:"category"`
-	CoverURL  string    `json:"cover_url"  db:"cover_url"`
-	Tags      []string  `json:"tags"       db:"tags"`
-	Status    string    `json:"status"     db:"status"`
-	Chapters  []Chapter `json:"chapters,omitempty"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+	ID         uuid.UUID   `json:"id"          db:"id"`
+	CategoryID *uuid.UUID  `json:"category_id" db:"category_id"`
+	Title      string      `json:"title"       db:"title"`
+	Author     string      `json:"author"      db:"author"`
+	Synopsis   string      `json:"synopsis"    db:"synopsis"`
+	CoverURL   string      `json:"cover_url"   db:"cover_url"`
+	Status     StoryStatus `json:"status"      db:"status"`
+	CreatedAt  time.Time   `json:"created_at"  db:"created_at"`
+	UpdatedAt  time.Time   `json:"updated_at"  db:"updated_at"`
 }
 
-func (s *Story) IsValidCategory() bool {
-	return s.Category == string(CategoryFinancial) ||
-		s.Category == string(CategoryTechnology) ||
-		s.Category == string(CategoryHealth)
+type StoryDetail struct {
+	Story
+	Category *Category `json:"category"`
+	Tags     []Tag     `json:"tags"`
 }
 
 func (s *Story) IsValidStatus() bool {
-	return s.Status == string(StatusPublish) || s.Status == string(StatusDraft)
+	return s.Status == StatusPublish || s.Status == StatusDraft
 }
