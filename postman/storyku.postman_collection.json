@@ -1,0 +1,1001 @@
+{
+  "info": {
+    "_postman_id": "storyku-collection-v1",
+    "name": "Storyku API",
+    "description": "API Specification untuk Storyku — Platform Manajemen Cerita\n\n**Base URL:** `{{base_url}}`\n\n**Stack:** Go · Echo v4 · PostgreSQL\n\n---\n\n### Setup\n1. Set variable `base_url` = `http://localhost:8080`\n2. Jalankan migration SQL (`001_create_tables.sql`)\n3. Jalankan server: `air` atau `go run ./cmd/main.go`\n\n### Flow Penggunaan\n```\n1. GET  /categories       → ambil list category\n2. GET  /tags             → ambil list tag (buat baru bila perlu)\n3. POST /stories          → buat story, kirim category_id & tag_ids\n4. POST /stories/:id/chapters  → tambah chapter\n```",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "category_id",
+      "value": "",
+      "type": "string",
+      "description": "UUID category — auto-set setelah Create Category"
+    },
+    {
+      "key": "tag_id",
+      "value": "",
+      "type": "string",
+      "description": "UUID tag — auto-set setelah Create Tag"
+    },
+    {
+      "key": "story_id",
+      "value": "",
+      "type": "string",
+      "description": "UUID story — auto-set setelah Create Story"
+    },
+    {
+      "key": "chapter_id",
+      "value": "",
+      "type": "string",
+      "description": "UUID chapter — auto-set setelah Add Chapter"
+    }
+  ],
+  "item": [
+    {
+      "name": "Master — Categories",
+      "description": "CRUD untuk master data Category. Seed awal (Financial, Technology, Health) sudah di-insert via migration.",
+      "item": [
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories"]
+            },
+            "description": "Mengambil seluruh daftar category. Gunakan response ini untuk mendapatkan `category_id` saat membuat story."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"categories retrieved successfully\",\n  \"data\": [\n    {\n      \"id\": \"018f0001-0000-7000-0000-000000000001\",\n      \"name\": \"Financial\",\n      \"slug\": \"financial\",\n      \"created_at\": \"2024-01-01T00:00:00Z\",\n      \"updated_at\": \"2024-01-01T00:00:00Z\"\n    },\n    {\n      \"id\": \"018f0001-0000-7000-0000-000000000002\",\n      \"name\": \"Technology\",\n      \"slug\": \"technology\",\n      \"created_at\": \"2024-01-01T00:00:00Z\",\n      \"updated_at\": \"2024-01-01T00:00:00Z\"\n    },\n    {\n      \"id\": \"018f0001-0000-7000-0000-000000000003\",\n      \"name\": \"Health\",\n      \"slug\": \"health\",\n      \"created_at\": \"2024-01-01T00:00:00Z\",\n      \"updated_at\": \"2024-01-01T00:00:00Z\"\n    }\n  ]\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Data is array\", () => {",
+                  "  pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Auto-save category_id pertama untuk dipakai di request lain",
+                  "const data = pm.response.json().data;",
+                  "if (data && data.length > 0) {",
+                  "  pm.collectionVariables.set('category_id', data[0].id);",
+                  "  console.log('category_id saved:', data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Category By ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}"]
+            },
+            "description": "Mengambil detail category berdasarkan UUID."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"category retrieved successfully\",\n  \"data\": {\n    \"id\": \"018f0001-0000-7000-0000-000000000002\",\n    \"name\": \"Technology\",\n    \"slug\": \"technology\",\n    \"created_at\": \"2024-01-01T00:00:00Z\",\n    \"updated_at\": \"2024-01-01T00:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"category not found\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Has slug field\", () => {",
+                  "  pm.expect(pm.response.json().data).to.have.property('slug');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Science\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories"]
+            },
+            "description": "Membuat category baru. `slug` di-generate otomatis dari `name`.\n\n**Contoh:** name `\"Gaya Hidup\"` → slug `\"gaya-hidup\"`\n\n**Validasi:** name wajib dan harus unik."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"category created successfully\",\n  \"data\": {\n    \"id\": \"018f1b2c-aaaa-7000-0000-aabbccddeeff\",\n    \"name\": \"Science\",\n    \"slug\": \"science\",\n    \"created_at\": \"0001-01-01T00:00:00Z\",\n    \"updated_at\": \"0001-01-01T00:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request — Duplicate",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"category with this name already exists\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('category_id', json.data.id);",
+                  "  console.log('category_id saved:', json.data.id);",
+                  "  pm.test(\"Slug auto-generated\", () => {",
+                  "    pm.expect(json.data.slug).to.not.be.empty;",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sains & Teknologi\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}"]
+            },
+            "description": "Mengupdate nama category. Slug akan di-regenerate dari nama baru."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"category updated successfully\",\n  \"data\": {\n    \"id\": \"018f1b2c-aaaa-7000-0000-aabbccddeeff\",\n    \"name\": \"Sains & Teknologi\",\n    \"slug\": \"sains-&-teknologi\",\n    \"created_at\": \"0001-01-01T00:00:00Z\",\n    \"updated_at\": \"0001-01-01T00:00:00Z\"\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}"]
+            },
+            "description": "Menghapus category. Story yang menggunakan category ini akan memiliki `category_id = NULL` (ON DELETE SET NULL)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"category deleted successfully\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Master — Tags",
+      "description": "CRUD untuk master data Tag. Relasi many-to-many ke stories via junction table `story_tags`.",
+      "item": [
+        {
+          "name": "List Tags",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tags",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tags"]
+            },
+            "description": "Mengambil seluruh daftar tag. Gunakan `id` dari response ini sebagai nilai `tag_ids` saat membuat / mengedit story."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"tags retrieved successfully\",\n  \"data\": [\n    {\n      \"id\": \"018f2001-0000-7000-0000-aabbcc000001\",\n      \"name\": \"golang\",\n      \"slug\": \"golang\",\n      \"created_at\": \"2024-01-01T00:00:00Z\",\n      \"updated_at\": \"2024-01-01T00:00:00Z\"\n    },\n    {\n      \"id\": \"018f2001-0000-7000-0000-aabbcc000002\",\n      \"name\": \"backend\",\n      \"slug\": \"backend\",\n      \"created_at\": \"2024-01-01T00:00:00Z\",\n      \"updated_at\": \"2024-01-01T00:00:00Z\"\n    }\n  ]\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "if (data && data.length > 0) {",
+                  "  pm.collectionVariables.set('tag_id', data[0].id);",
+                  "  console.log('tag_id saved:', data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Tag By ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tags/{{tag_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tags", "{{tag_id}}"]
+            },
+            "description": "Mengambil detail tag berdasarkan UUID."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"tag retrieved successfully\",\n  \"data\": {\n    \"id\": \"018f2001-0000-7000-0000-aabbcc000001\",\n    \"name\": \"golang\",\n    \"slug\": \"golang\",\n    \"created_at\": \"2024-01-01T00:00:00Z\",\n    \"updated_at\": \"2024-01-01T00:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"tag not found\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Tag",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"golang\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tags",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tags"]
+            },
+            "description": "Membuat tag baru. `slug` di-generate otomatis dari `name`.\n\n**Validasi:** name wajib dan harus unik."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"tag created successfully\",\n  \"data\": {\n    \"id\": \"018f2001-0000-7000-0000-aabbcc000001\",\n    \"name\": \"golang\",\n    \"slug\": \"golang\",\n    \"created_at\": \"0001-01-01T00:00:00Z\",\n    \"updated_at\": \"0001-01-01T00:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request — Duplicate",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"tag with this name already exists\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('tag_id', json.data.id);",
+                  "  console.log('tag_id saved:', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Tag",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"go-lang\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tags/{{tag_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tags", "{{tag_id}}"]
+            },
+            "description": "Mengupdate nama tag. Slug akan di-regenerate."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"tag updated successfully\",\n  \"data\": {\n    \"id\": \"018f2001-0000-7000-0000-aabbcc000001\",\n    \"name\": \"go-lang\",\n    \"slug\": \"go-lang\",\n    \"created_at\": \"0001-01-01T00:00:00Z\",\n    \"updated_at\": \"0001-01-01T00:00:00Z\"\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Tag",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tags/{{tag_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tags", "{{tag_id}}"]
+            },
+            "description": "Menghapus tag. Relasi di `story_tags` ikut terhapus (ON DELETE CASCADE)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"tag deleted successfully\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Stories",
+      "description": "CRUD Story. Category menggunakan `category_id` (UUID FK), Tags menggunakan `tag_ids` (array UUID).",
+      "item": [
+        {
+          "name": "List Stories",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Halaman (default: 1)" },
+                { "key": "limit", "value": "10", "description": "Per halaman (default: 10, max: 100)" },
+                { "key": "search", "value": "", "description": "Search by title atau author", "disabled": true },
+                { "key": "category_id", "value": "", "description": "Filter by category UUID", "disabled": true },
+                { "key": "status", "value": "", "description": "Filter: publish | draft", "disabled": true }
+              ]
+            },
+            "description": "Mengambil daftar story.\n\n**Perubahan dari versi lama:** filter category sekarang pakai `category_id` (UUID) bukan `category` (string).\n\nResponse menyertakan object `category` dan array `tags` secara penuh."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"stories retrieved successfully\",\n  \"data\": [\n    {\n      \"id\": \"018f1b2c-3d4e-7f89-ab01-234567890abc\",\n      \"category_id\": \"018f0001-0000-7000-0000-000000000002\",\n      \"title\": \"Belajar Golang Clean Architecture\",\n      \"author\": \"Vito Hidayat\",\n      \"synopsis\": \"Panduan REST API dengan Go\",\n      \"cover_url\": \"/uploads/covers/20240101_a1b2c3d4.jpg\",\n      \"status\": \"publish\",\n      \"created_at\": \"2024-01-01T12:00:00Z\",\n      \"updated_at\": \"2024-01-01T12:00:00Z\",\n      \"category\": {\n        \"id\": \"018f0001-0000-7000-0000-000000000002\",\n        \"name\": \"Technology\",\n        \"slug\": \"technology\"\n      },\n      \"tags\": [\n        { \"id\": \"018f2001-0000-7000-0000-aabbcc000001\", \"name\": \"golang\", \"slug\": \"golang\" },\n        { \"id\": \"018f2001-0000-7000-0000-aabbcc000002\", \"name\": \"backend\", \"slug\": \"backend\" }\n      ]\n    }\n  ],\n  \"meta\": {\n    \"page\": 1,\n    \"limit\": 10,\n    \"total\": 1,\n    \"total_pages\": 1\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Has meta pagination\", () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.meta).to.have.all.keys('page','limit','total','total_pages');",
+                  "});",
+                  "pm.test(\"Story has category object and tags array\", () => {",
+                  "  const data = pm.response.json().data;",
+                  "  if (data && data.length > 0) {",
+                  "    pm.expect(data[0]).to.have.property('category');",
+                  "    pm.expect(data[0]).to.have.property('tags');",
+                  "    pm.expect(data[0].tags).to.be.an('array');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Stories — Filter by Category",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories?category_id={{category_id}}&page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories"],
+              "query": [
+                { "key": "category_id", "value": "{{category_id}}", "description": "UUID dari master category" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Filter story berdasarkan `category_id` (UUID). Dapatkan UUID dari endpoint `GET /categories`."
+          },
+          "response": []
+        },
+        {
+          "name": "List Stories — Filter by Status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories?status=publish&page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories"],
+              "query": [
+                { "key": "status", "value": "publish" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Filter by status: `publish` atau `draft`."
+          },
+          "response": []
+        },
+        {
+          "name": "List Stories — Search + Filter Combined",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories?search=golang&category_id={{category_id}}&status=publish&page=1&limit=5",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories"],
+              "query": [
+                { "key": "search", "value": "golang" },
+                { "key": "category_id", "value": "{{category_id}}" },
+                { "key": "status", "value": "publish" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            },
+            "description": "Kombinasi search by title/author, filter category, dan filter status."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Story Detail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories/{{story_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories", "{{story_id}}"]
+            },
+            "description": "Mengambil detail story lengkap: field story + object `category` + array `tags` + array `chapters`."
+          },
+          "response": [
+            {
+              "name": "200 OK — Story Detail",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"story retrieved successfully\",\n  \"data\": {\n    \"id\": \"018f1b2c-3d4e-7f89-ab01-234567890abc\",\n    \"category_id\": \"018f0001-0000-7000-0000-000000000002\",\n    \"title\": \"Belajar Golang Clean Architecture\",\n    \"author\": \"Vito Hidayat\",\n    \"synopsis\": \"Panduan REST API dengan Go\",\n    \"cover_url\": \"/uploads/covers/20240101_a1b2c3d4.jpg\",\n    \"status\": \"publish\",\n    \"created_at\": \"2024-01-01T12:00:00Z\",\n    \"updated_at\": \"2024-01-01T12:00:00Z\",\n    \"category\": {\n      \"id\": \"018f0001-0000-7000-0000-000000000002\",\n      \"name\": \"Technology\",\n      \"slug\": \"technology\"\n    },\n    \"tags\": [\n      { \"id\": \"018f2001-0000-7000-0000-aabbcc000001\", \"name\": \"golang\", \"slug\": \"golang\" }\n    ],\n    \"chapters\": [\n      {\n        \"id\": \"018f1b2c-aaaa-7f89-ab01-111111111111\",\n        \"story_id\": \"018f1b2c-3d4e-7f89-ab01-234567890abc\",\n        \"title\": \"Bab 1: Pengenalan\",\n        \"content\": \"<p>Konten bab pertama...</p>\",\n        \"order_index\": 0,\n        \"created_at\": \"2024-01-01T13:00:00Z\",\n        \"updated_at\": \"2024-01-01T13:00:00Z\"\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"story not found\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.test(\"Has category object\", () => pm.expect(data.category).to.be.an('object'));",
+                  "  pm.test(\"Has tags array\", () => pm.expect(data.tags).to.be.an('array'));",
+                  "  pm.test(\"Has chapters array\", () => pm.expect(data.chapters).to.be.an('array'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Story",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_id\": \"{{category_id}}\",\n  \"title\": \"Belajar Golang Clean Architecture\",\n  \"author\": \"Vito Hidayat\",\n  \"synopsis\": \"Panduan lengkap membangun REST API dengan Go, Echo, dan PostgreSQL.\",\n  \"tag_ids\": [\"{{tag_id}}\"],\n  \"status\": \"draft\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories"]
+            },
+            "description": "Membuat story baru.\n\n**Field:**\n- `category_id` — UUID dari master category (opsional, bisa null)\n- `tag_ids` — array UUID dari master tag (opsional, bisa kosong `[]`)\n- `title` — wajib\n- `author` — wajib\n- `status` — opsional, default `draft`\n\n**Penting:** Dapatkan `category_id` dari `GET /categories` dan `tag_ids` dari `GET /tags` terlebih dahulu."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"story created successfully\",\n  \"data\": {\n    \"id\": \"018f1b2c-3d4e-7f89-ab01-234567890abc\",\n    \"category_id\": \"018f0001-0000-7000-0000-000000000002\",\n    \"title\": \"Belajar Golang Clean Architecture\",\n    \"author\": \"Vito Hidayat\",\n    \"synopsis\": \"Panduan lengkap membangun REST API dengan Go.\",\n    \"cover_url\": \"\",\n    \"status\": \"draft\",\n    \"created_at\": \"0001-01-01T00:00:00Z\",\n    \"updated_at\": \"0001-01-01T00:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "400 — Missing Title",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"title is required\"\n}"
+            },
+            {
+              "name": "400 — Category Not Found",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"category not found\"\n}"
+            },
+            {
+              "name": "400 — Invalid Tag ID",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"one or more tag IDs are invalid\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('story_id', json.data.id);",
+                  "  console.log('story_id saved:', json.data.id);",
+                  "  pm.test(\"Story ID is set\", () => pm.expect(json.data.id).to.not.be.empty);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Story — With Cover (multipart)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "category_id", "value": "{{category_id}}", "type": "text" },
+                { "key": "title", "value": "Story dengan Cover Image", "type": "text" },
+                { "key": "author", "value": "Vito Hidayat", "type": "text" },
+                { "key": "synopsis", "value": "Story ini memiliki cover image.", "type": "text" },
+                { "key": "tag_ids", "value": "{{tag_id}}", "description": "Kirim tag_ids sebagai array — tambah field ini berkali-kali untuk multiple tags", "type": "text" },
+                { "key": "status", "value": "publish", "type": "text" },
+                { "key": "cover", "type": "file", "src": [], "description": "jpg, jpeg, png, webp — max 5MB" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories"]
+            },
+            "description": "Membuat story dengan cover image via `multipart/form-data`.\n\n**tag_ids via multipart:** tambahkan field `tag_ids` berkali-kali (satu per UUID)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('story_id', pm.response.json().data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit Story",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_id\": \"{{category_id}}\",\n  \"title\": \"Belajar Golang — Updated\",\n  \"author\": \"Vito Hidayat\",\n  \"synopsis\": \"Synopsis telah diperbarui.\",\n  \"tag_ids\": [\"{{tag_id}}\"],\n  \"status\": \"publish\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories/{{story_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories", "{{story_id}}"]
+            },
+            "description": "Mengupdate story. `tag_ids` yang baru akan menggantikan seluruh tag lama (replace, bukan append).\n\nJika `tag_ids` dikirim kosong `[]`, semua tag pada story akan dihapus."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"story updated successfully\",\n  \"data\": {\n    \"id\": \"018f1b2c-3d4e-7f89-ab01-234567890abc\",\n    \"category_id\": \"018f0001-0000-7000-0000-000000000002\",\n    \"title\": \"Belajar Golang — Updated\",\n    \"author\": \"Vito Hidayat\",\n    \"synopsis\": \"Synopsis telah diperbarui.\",\n    \"cover_url\": \"/uploads/covers/20240101_a1b2c3d4.jpg\",\n    \"status\": \"publish\",\n    \"created_at\": \"0001-01-01T00:00:00Z\",\n    \"updated_at\": \"0001-01-01T00:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"story not found\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Story",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories/{{story_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories", "{{story_id}}"]
+            },
+            "description": "Menghapus story. Chapters dan relasi story_tags ikut terhapus via CASCADE."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"story deleted successfully\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Success is true\", () => pm.expect(pm.response.json().success).to.be.true);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chapters",
+      "description": "Manajemen Chapter di dalam Story. `order_index` di-set otomatis berdasarkan urutan penambahan.",
+      "item": [
+        {
+          "name": "Add Chapter",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Bab 1: Pengenalan Clean Architecture\",\n  \"content\": \"<h2>Apa itu Clean Architecture?</h2><p>Clean Architecture adalah pendekatan desain software yang memisahkan concern berdasarkan lapisan...</p>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories/{{story_id}}/chapters",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories", "{{story_id}}", "chapters"]
+            },
+            "description": "Menambahkan chapter ke dalam story.\n\n- `title` — wajib\n- `content` — opsional, mendukung HTML dari rich text editor (Quill, CKEditor, dll)\n- `order_index` di-set otomatis"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"chapter added successfully\",\n  \"data\": {\n    \"id\": \"018f1b2c-aaaa-7f89-ab01-111111111111\",\n    \"story_id\": \"018f1b2c-3d4e-7f89-ab01-234567890abc\",\n    \"title\": \"Bab 1: Pengenalan Clean Architecture\",\n    \"content\": \"<h2>Apa itu Clean Architecture?</h2><p>...</p>\",\n    \"order_index\": 0,\n    \"created_at\": \"0001-01-01T00:00:00Z\",\n    \"updated_at\": \"0001-01-01T00:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "400 — Missing Title",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"chapter title is required\"\n}"
+            },
+            {
+              "name": "404 — Story Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"story not found\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('chapter_id', json.data.id);",
+                  "  console.log('chapter_id saved:', json.data.id);",
+                  "  pm.test(\"Chapter has order_index\", () => {",
+                  "    pm.expect(json.data).to.have.property('order_index');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit Chapter",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Bab 1: Pengenalan Clean Architecture (Revisi)\",\n  \"content\": \"<h2>Apa itu Clean Architecture?</h2><p>Konten yang sudah diperbarui dengan penjelasan lebih lengkap...</p>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories/{{story_id}}/chapters/{{chapter_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories", "{{story_id}}", "chapters", "{{chapter_id}}"]
+            },
+            "description": "Mengupdate title dan content chapter.\n\nValidasi: chapter harus milik story yang dimaksud."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"chapter updated successfully\",\n  \"data\": {\n    \"id\": \"018f1b2c-aaaa-7f89-ab01-111111111111\",\n    \"story_id\": \"018f1b2c-3d4e-7f89-ab01-234567890abc\",\n    \"title\": \"Bab 1: Pengenalan Clean Architecture (Revisi)\",\n    \"content\": \"<h2>Apa itu Clean Architecture?</h2><p>Konten yang sudah diperbarui...</p>\",\n    \"order_index\": 0,\n    \"created_at\": \"0001-01-01T00:00:00Z\",\n    \"updated_at\": \"0001-01-01T00:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "400 — Wrong Story",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"chapter does not belong to this story\"\n}"
+            },
+            {
+              "name": "404 — Chapter Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"chapter not found\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Chapter",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories/{{story_id}}/chapters/{{chapter_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stories", "{{story_id}}", "chapters", "{{chapter_id}}"]
+            },
+            "description": "Menghapus chapter. Validasi ownership tetap dilakukan."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"chapter deleted successfully\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"Response time < 2000ms\", () => {",
+          "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+          "});",
+          "pm.test(\"Content-Type is JSON\", () => {",
+          "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "});"
+        ]
+      }
+    }
+  ]
+}

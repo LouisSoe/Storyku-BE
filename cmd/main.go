@@ -40,7 +40,7 @@ func main() {
 	e := echo.New()
 	e.HideBanner = true
 
-	routes.Register(e, storyHandler, chapterHandler, categoryHandler, tagHandler)
+	routes.Register(e, cfg.Logger, storyHandler, chapterHandler, categoryHandler, tagHandler)
 
 	go func() {
 		cfg.Logger.Infof("server starting on port %s", cfg.AppPort)

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -61,6 +62,11 @@ func connectDB(log *logrus.Logger) *sql.DB {
 }
 
 func buildLogger(env string) *logrus.Logger {
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err == nil {
+		time.Local = loc
+	}
+
 	log := logrus.New()
 
 	if env == "production" {
@@ -74,6 +80,9 @@ func buildLogger(env string) *logrus.Logger {
 		})
 		log.SetLevel(logrus.DebugLevel)
 	}
+
+	hook := NewDailyErrorHook("logs")
+	log.AddHook(hook)
 
 	return log
 }
