@@ -1,0 +1,9 @@
+tmp/build-errors.log
+tmp/main.exe
+tmp/main.exe~
+logs/app.log
+logs/*.*
+logs/app.log
+.env
+logs
+tmp
