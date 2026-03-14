@@ -38,6 +38,33 @@
   ],
   "item": [
     {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard"]
+            },
+            "description": "Mengambil semua data dashboard dalam satu request:\n- Summary (total stories, published, draft, chapters, categories, tags)\n- Stories per category\n- Stories per status (publish vs draft)\n- Top 5 tags terbanyak dipakai\n- 5 story terbaru\n- 5 chapter terbaru"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"dashboard data retrieved successfully\",\n  \"data\": {\n    \"total_stories\": 10,\n    \"total_chapters\": 50,\n    \"total_categories\": 5,\n    \"total_tags\": 10\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Master — Categories",
       "description": "CRUD untuk master data Category. Seed awal (Financial, Technology, Health) sudah di-insert via migration.",
       "item": [

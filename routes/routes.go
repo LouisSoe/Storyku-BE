@@ -16,6 +16,7 @@ func Register(
 	chapterHandler *httpHandler.ChapterHandler,
 	categoryHandler *httpHandler.CategoryHandler,
 	tagHandler *httpHandler.TagHandler,
+	dashboardHandler *httpHandler.DashboardHandler,
 ) {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -48,6 +49,8 @@ func Register(
 	e.Static("/uploads", "uploads")
 
 	api := e.Group("/api/v1")
+
+	api.GET("/dashboard", dashboardHandler.Get)
 
 	// Master: Categories
 	categories := api.Group("/categories")

@@ -1,3 +1,4 @@
+// interfaces/http/story_handler.go
 package http
 
 import (
@@ -28,12 +29,12 @@ func NewStoryHandler(su usecase.StoryUsecase, cu usecase.ChapterUsecase, logger 
 }
 
 type storyRequest struct {
-	CategoryID string   `json:"category_id"`
-	Title      string   `json:"title"`
-	Author     string   `json:"author"`
-	Synopsis   string   `json:"synopsis"`
-	TagIDs     []string `json:"tag_ids"`
-	Status     string   `json:"status"`
+	CategoryID string   `form:"category_id" json:"category_id"`
+	Title      string   `form:"title"       json:"title"`
+	Author     string   `form:"author"      json:"author"`
+	Synopsis   string   `form:"synopsis"    json:"synopsis"`
+	TagIDs     []string `form:"tag_ids"     json:"tag_ids"`
+	Status     string   `form:"status"      json:"status"`
 }
 
 type storyDetailResponse struct {
@@ -94,7 +95,12 @@ func (h *StoryHandler) GetByID(c echo.Context) error {
 // Create godoc
 // POST /api/v1/stories
 func (h *StoryHandler) Create(c echo.Context) error {
-	req, tagIDs, err := h.bindStoryRequest(c)
+	req, err := h.bindStoryRequest(c)
+	if err != nil {
+		return utils.BadRequest(c, "invalid request body")
+	}
+
+	story, tagIDs, err := h.toStoryDomain(req)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
@@ -103,8 +109,8 @@ func (h *StoryHandler) Create(c echo.Context) error {
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
+	story.CoverURL = coverURL
 
-	story := h.toStoreDomain(req, coverURL)
 	if err := h.storyUsecase.Create(c.Request().Context(), story, tagIDs); err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
@@ -119,9 +125,9 @@ func (h *StoryHandler) Update(c echo.Context) error {
 		return utils.BadRequest(c, "invalid story ID")
 	}
 
-	req, tagIDs, err := h.bindStoryRequest(c)
+	req, err := h.bindStoryRequest(c)
 	if err != nil {
-		return utils.BadRequest(c, err.Error())
+		return utils.BadRequest(c, "invalid request body")
 	}
 
 	existing, err := h.storyUsecase.GetByID(c.Request().Context(), id)
@@ -132,6 +138,11 @@ func (h *StoryHandler) Update(c echo.Context) error {
 		return utils.InternalError(c, "failed to fetch story")
 	}
 
+	story, tagIDs, err := h.toStoryDomain(req)
+	if err != nil {
+		return utils.BadRequest(c, err.Error())
+	}
+
 	coverURL, err := h.handleFileUpload(c)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
@@ -139,8 +150,8 @@ func (h *StoryHandler) Update(c echo.Context) error {
 	if coverURL == "" {
 		coverURL = existing.CoverURL
 	}
+	story.CoverURL = coverURL
 
-	story := h.toStoreDomain(req, coverURL)
 	if err := h.storyUsecase.Update(c.Request().Context(), id, story, tagIDs); err != nil {
 		if err.Error() == "story not found" {
 			return utils.NotFound(c, err.Error())
@@ -169,37 +180,61 @@ func (h *StoryHandler) Delete(c echo.Context) error {
 	return utils.OK(c, "story deleted successfully", nil)
 }
 
-func (h *StoryHandler) bindStoryRequest(c echo.Context) (*storyRequest, []uuid.UUID, error) {
-	var req storyRequest
-	if err := c.Bind(&req); err != nil {
-		return nil, nil, errors.New("invalid request body")
+// ─── Internal Helpers ─────────────────────────────────────────────────────────
+
+// bindStoryRequest membaca request body (JSON atau multipart)
+func (h *StoryHandler) bindStoryRequest(c echo.Context) (*storyRequest, error) {
+	req := &storyRequest{}
+
+	contentType := c.Request().Header.Get("Content-Type")
+	if strings.Contains(contentType, "multipart/form-data") {
+		// Bind field biasa via form tags
+		if err := c.Bind(req); err != nil {
+			return nil, err
+		}
+		if len(req.TagIDs) == 0 {
+			req.TagIDs = c.Request().Form["tag_ids"]
+		}
+	} else {
+		if err := c.Bind(req); err != nil {
+			return nil, err
+		}
 	}
 
-	var tagIDs []uuid.UUID
-	for _, raw := range req.TagIDs {
-		id, err := uuid.Parse(strings.TrimSpace(raw))
-		if err != nil {
-			return nil, nil, errors.New("invalid tag_id: " + raw)
-		}
-		tagIDs = append(tagIDs, id)
-	}
-	return &req, tagIDs, nil
+	return req, nil
 }
 
-func (h *StoryHandler) toStoreDomain(req *storyRequest, coverURL string) *domain.Story {
+// toStoryDomain konversi request ke domain Story + []uuid.UUID tag IDs
+func (h *StoryHandler) toStoryDomain(req *storyRequest) (*domain.Story, []uuid.UUID, error) {
 	story := &domain.Story{
 		Title:    strings.TrimSpace(req.Title),
 		Author:   strings.TrimSpace(req.Author),
 		Synopsis: strings.TrimSpace(req.Synopsis),
-		CoverURL: coverURL,
 		Status:   domain.StoryStatus(req.Status),
 	}
+
 	if req.CategoryID != "" {
-		if id, err := uuid.Parse(req.CategoryID); err == nil {
-			story.CategoryID = &id
+		catID, err := uuid.Parse(req.CategoryID)
+		if err != nil {
+			return nil, nil, errors.New("invalid category_id format")
 		}
+		story.CategoryID = &catID
 	}
-	return story
+
+	var tagIDs []uuid.UUID
+	for _, raw := range req.TagIDs {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		tagID, err := uuid.Parse(raw)
+		if err != nil {
+			return nil, nil, errors.New("invalid tag_id: " + raw)
+		}
+		tagIDs = append(tagIDs, tagID)
+	}
+
+	return story, tagIDs, nil
 }
 
 func (h *StoryHandler) handleFileUpload(c echo.Context) (string, error) {
@@ -208,7 +243,9 @@ func (h *StoryHandler) handleFileUpload(c echo.Context) (string, error) {
 		return "", nil
 	}
 
-	allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
+	allowedExts := map[string]bool{
+		".jpg": true, ".jpeg": true, ".png": true, ".webp": true,
+	}
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	if !allowedExts[ext] {
 		return "", errors.New("only jpg, jpeg, png, webp are allowed")

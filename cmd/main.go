@@ -20,27 +20,30 @@ func main() {
 	cfg := config.Load()
 
 	// Repositories
-	storyRepo    := dbImpl.NewStoryRepository(cfg.DB)
-	chapterRepo  := dbImpl.NewChapterRepository(cfg.DB)
-	categoryRepo := dbImpl.NewCategoryRepository(cfg.DB)
-	tagRepo      := dbImpl.NewTagRepository(cfg.DB)
+	storyRepo     := dbImpl.NewStoryRepository(cfg.DB)
+	chapterRepo   := dbImpl.NewChapterRepository(cfg.DB)
+	categoryRepo  := dbImpl.NewCategoryRepository(cfg.DB)
+	tagRepo       := dbImpl.NewTagRepository(cfg.DB)
+	dashboardRepo := dbImpl.NewDashboardRepository(cfg.DB)
 
 	// Use Cases
-	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo)
-	tagUsecase      := usecase.NewTagUsecase(tagRepo)
-	storyUsecase    := usecase.NewStoryUsecase(storyRepo, categoryRepo, tagRepo)
-	chapterUsecase  := usecase.NewChapterUsecase(storyRepo, chapterRepo)
+	categoryUsecase  := usecase.NewCategoryUsecase(categoryRepo)
+	tagUsecase       := usecase.NewTagUsecase(tagRepo)
+	storyUsecase     := usecase.NewStoryUsecase(storyRepo, categoryRepo, tagRepo)
+	chapterUsecase   := usecase.NewChapterUsecase(storyRepo, chapterRepo)
+	dashboardUsecase := usecase.NewDashboardUsecase(dashboardRepo)
 
 	// Handlers
-	storyHandler    := httpHandler.NewStoryHandler(storyUsecase, chapterUsecase, cfg.Logger)
-	chapterHandler  := httpHandler.NewChapterHandler(chapterUsecase, cfg.Logger)
-	categoryHandler := httpHandler.NewCategoryHandler(categoryUsecase, cfg.Logger)
-	tagHandler      := httpHandler.NewTagHandler(tagUsecase, cfg.Logger)
+	storyHandler     := httpHandler.NewStoryHandler(storyUsecase, chapterUsecase, cfg.Logger)
+	chapterHandler   := httpHandler.NewChapterHandler(chapterUsecase, cfg.Logger)
+	categoryHandler  := httpHandler.NewCategoryHandler(categoryUsecase, cfg.Logger)
+	tagHandler       := httpHandler.NewTagHandler(tagUsecase, cfg.Logger)
+	dashboardHandler := httpHandler.NewDashboardHandler(dashboardUsecase, cfg.Logger)
 
 	e := echo.New()
 	e.HideBanner = true
 
-	routes.Register(e, cfg.Logger, storyHandler, chapterHandler, categoryHandler, tagHandler)
+	routes.Register(e, cfg.Logger, storyHandler, chapterHandler, categoryHandler, tagHandler, dashboardHandler)
 
 	go func() {
 		cfg.Logger.Infof("server starting on port %s", cfg.AppPort)
