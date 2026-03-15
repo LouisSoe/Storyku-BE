@@ -13,6 +13,7 @@ REST API untuk manajemen cerita yang dibangun menggunakan arsitektur bersih (Cle
 - [API / Website URL](#api--website-url)
 
 ## Features
+- Dashboard
 - Story List (dengan pencarian, filter kategori, status, dan pagination)
 - Add Story (dengan upload cover image)
 - Story Detail
@@ -101,7 +102,5 @@ Untuk memudahkan pengetesan API backend, ikuti langkah ini:
 4. Koleksi *endpoints* (request examples) kini sudah masuk dan siap digunakan. Pastikan server lokal Anda sudah berjalan (langkah ke-3).
 
 ## API / Website URL
-**Backend Base URL Lokal:**
-[http://localhost:8080/api/v1](http://localhost:8080/api/v1)
-
-*(Ganti dengan tautan *deployment*/publik milik Anda ketika aplikasi ini di-deploy di internet)*
+**Backend Base URL:**
+[http://103.174.114.118:8081/api/v1](http://103.174.114.118:8081/api/v1)
